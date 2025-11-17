@@ -115,14 +115,6 @@ def predict():
 
         # ==== Prediksi ====
         hasil_encoded = model.predict(input_scaled)
-        
-        # ==== Hitung Confidence (jika model support) ====
-        try:
-            probabilities = model.predict_proba(input_scaled)
-            confidence = round(float(np.max(probabilities)) * 100, 2)
-        except AttributeError:
-            # Jika model tidak support predict_proba
-            confidence = 0.0
 
         # ==== Decode ke nama jurusan ====
         hasil_jurusan = label_encoder.inverse_transform(hasil_encoded)[0]
@@ -175,12 +167,11 @@ def predict():
             f'Jurusan {hasil_jurusan} direkomendasikan berdasarkan analisis nilai mata pelajaran Anda.'
         )
 
-        print(f"Prediction successful: {hasil_jurusan}, confidence: {confidence}%", flush=True)
+        print(f"Prediction successful: {hasil_jurusan}", flush=True)
 
         # ==== UBAH RETURN INI ====
         return jsonify({
             'jurusan': hasil_jurusan,
-            'confidence': confidence,
             'deskripsi': deskripsi
         })
 
@@ -190,7 +181,6 @@ def predict():
         return jsonify({
             'error': str(e),
             'jurusan': None,
-            'confidence': 0.0,
             'deskripsi': 'Terjadi kesalahan saat melakukan prediksi'
         }), 500
 
