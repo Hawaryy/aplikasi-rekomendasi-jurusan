@@ -115,15 +115,73 @@ def predict():
 
         # ==== Prediksi ====
         hasil_encoded = model.predict(input_scaled)
+        
+        # ==== Hitung Confidence (jika model support) ====
+        try:
+            probabilities = model.predict_proba(input_scaled)
+            confidence = round(float(np.max(probabilities)) * 100, 2)
+        except AttributeError:
+            # Jika model tidak support predict_proba
+            confidence = 0.0
 
         # ==== Decode ke nama jurusan ====
         hasil_jurusan = label_encoder.inverse_transform(hasil_encoded)[0]
 
-        print(f"Prediction successful: {hasil_jurusan}", flush=True)
+        # ==== Deskripsi Map ====
+        deskripsi_map = {
+            'Teknik': 'Jurusan Teknik cocok untuk Anda yang memiliki kemampuan kuat di Matematika, Fisika, dan Kimia. Jurusan ini membuka peluang karir di bidang teknik sipil, teknik mesin, teknik elektro, teknik informatika, dan berbagai bidang rekayasa teknologi.',
+            
+            'Kesehatan': 'Jurusan Kesehatan cocok untuk Anda yang memiliki nilai baik di Biologi, Kimia, dan Fisika. Jurusan ini membuka peluang karir di bidang kedokteran, keperawatan, farmasi, kesehatan masyarakat, gizi, dan profesi kesehatan lainnya.',
+            
+            'Ilmu Komunikasi': 'Jurusan Ilmu Komunikasi cocok untuk Anda yang memiliki kemampuan komunikasi yang baik dalam Bahasa Indonesia dan Bahasa Inggris. Jurusan ini membuka peluang karir di bidang jurnalisme, public relations, broadcasting, periklanan, dan media digital.',
+            
+            'Matematika Murni': 'Jurusan Matematika Murni cocok untuk Anda yang memiliki kemampuan analitis dan logika kuat dalam Matematika. Jurusan ini membuka peluang karir di bidang penelitian matematika, aktuaria, data science, statistika, dan pengembangan algoritma.',
+            
+            'Pertanian dan Kehutanan': 'Jurusan Pertanian dan Kehutanan cocok untuk Anda yang memiliki minat di Biologi, Kimia, dan kepedulian terhadap lingkungan. Jurusan ini membuka peluang karir di bidang agronomi, peternakan, kehutanan, konservasi alam, dan teknologi pertanian.',
+            
+            'Fisika Murni': 'Jurusan Fisika Murni cocok untuk Anda yang memiliki kemampuan kuat di Fisika dan Matematika. Jurusan ini membuka peluang karir di bidang penelitian fisika, instrumentasi, energi, astronomi, dan teknologi nuklir.',
+            
+            'Sastra Inggris': 'Jurusan Sastra Inggris cocok untuk Anda yang memiliki kemampuan menonjol dalam Bahasa Inggris dan apresiasi terhadap karya sastra. Jurusan ini membuka peluang karir di bidang penerjemahan, kritik sastra, penerbitan, content writing, dan pengajaran bahasa.',
+            
+            'Pendidikan Bahasa Inggris': 'Jurusan Pendidikan Bahasa Inggris cocok untuk Anda yang memiliki kemampuan Bahasa Inggris yang baik dan minat dalam dunia pendidikan. Jurusan ini membuka peluang karir sebagai guru bahasa Inggris, pengembang kurikulum, instruktur pelatihan, dan pendidik profesional.',
+            
+            'Akuntansi': 'Jurusan Akuntansi cocok untuk Anda yang memiliki kemampuan Matematika dan Ekonomi yang baik serta teliti dalam angka. Jurusan ini membuka peluang karir di bidang akuntan publik, auditor, konsultan pajak, analis keuangan, dan manajer akuntansi.',
+            
+            'Agribisnis': 'Jurusan Agribisnis cocok untuk Anda yang memiliki nilai baik di Ekonomi, Biologi, dan Matematika. Jurusan ini membuka peluang karir di bidang manajemen agribisnis, kewirausahaan pertanian, pemasaran produk pertanian, dan pengembangan bisnis agro-industri.',
+            
+            'Sosiologi': 'Jurusan Sosiologi cocok untuk Anda yang memiliki kemampuan memahami dinamika sosial melalui mata pelajaran Sosiologi, PPKN, dan Sejarah. Jurusan ini membuka peluang karir di bidang penelitian sosial, pengembangan masyarakat, kebijakan publik, dan konsultan sosial.',
+            
+            'PGSD': 'Jurusan PGSD (Pendidikan Guru Sekolah Dasar) cocok untuk Anda yang memiliki nilai seimbang di berbagai mata pelajaran dan minat dalam pendidikan anak. Jurusan ini membuka peluang karir sebagai guru SD, pengembang pendidikan dasar, dan tenaga kependidikan profesional.',
+            
+            'Hukum': 'Jurusan Hukum cocok untuk Anda yang memiliki kemampuan baik di PPKN, Bahasa Indonesia, dan Sejarah dengan kemampuan analisis yang kuat. Jurusan ini membuka peluang karir di bidang advokat, hakim, jaksa, notaris, konsultan hukum, dan legal officer.',
+            
+            'Psikologi': 'Jurusan Psikologi cocok untuk Anda yang memiliki kemampuan memahami perilaku manusia melalui Sosiologi, Biologi, dan PPKN. Jurusan ini membuka peluang karir di bidang psikolog klinis, konselor, HRD, peneliti perilaku, dan psikolog industri.',
+            
+            'Manajemen Bisnis': 'Jurusan Manajemen Bisnis cocok untuk Anda yang memiliki kemampuan di Ekonomi, Matematika, dan Bahasa Inggris. Jurusan ini membuka peluang karir di bidang manajer bisnis, entrepreneur, konsultan manajemen, business analyst, dan marketing manager.',
+            
+            'Seni Rupa/DKV': 'Jurusan Seni Rupa/DKV (Desain Komunikasi Visual) cocok untuk Anda yang memiliki kemampuan Seni Budaya yang menonjol dan kreativitas tinggi. Jurusan ini membuka peluang karir di bidang desain grafis, ilustrator, animator, creative director, dan seniman visual.',
+            
+            'Ekonomi': 'Jurusan Ekonomi cocok untuk Anda yang memiliki kemampuan kuat di Ekonomi dan Matematika dengan pemahaman tentang isu sosial. Jurusan ini membuka peluang karir di bidang ekonom, analis ekonomi, perbankan, konsultan ekonomi, dan peneliti kebijakan ekonomi.',
+            
+            'Arsitektur': 'Jurusan Arsitektur cocok untuk Anda yang memiliki kemampuan di Matematika, Fisika, dan Seni Budaya dengan kreativitas dalam desain. Jurusan ini membuka peluang karir di bidang arsitek, perencana kota, desainer interior, konsultan bangunan, dan landscape architect.',
+            
+            'Sejarah': 'Jurusan Sejarah cocok untuk Anda yang memiliki kemampuan baik di Sejarah, Bahasa Indonesia, dan PPKN dengan minat pada masa lalu. Jurusan ini membuka peluang karir di bidang sejarawan, peneliti, arkeolog, kurator museum, guru sejarah, dan penulis sejarah.',
+            
+            'Biologi Murni': 'Jurusan Biologi Murni cocok untuk Anda yang memiliki kemampuan kuat di Biologi dan Kimia dengan minat pada sains kehidupan. Jurusan ini membuka peluang karir di bidang peneliti biologi, bioteknologi, konservasi, mikrobiologi, dan pengembangan farmasi.'
+        }
+        
+        deskripsi = deskripsi_map.get(
+            hasil_jurusan, 
+            f'Jurusan {hasil_jurusan} direkomendasikan berdasarkan analisis nilai mata pelajaran Anda.'
+        )
 
+        print(f"Prediction successful: {hasil_jurusan}, confidence: {confidence}%", flush=True)
+
+        # ==== UBAH RETURN INI ====
         return jsonify({
-            'rekomendasi_jurusan': hasil_jurusan,
-            'status': 'success'
+            'jurusan': hasil_jurusan,
+            'confidence': confidence,
+            'deskripsi': deskripsi
         })
 
     except Exception as e:
@@ -131,7 +189,9 @@ def predict():
         traceback.print_exc()
         return jsonify({
             'error': str(e),
-            'status': 'failed'
+            'jurusan': None,
+            'confidence': 0.0,
+            'deskripsi': 'Terjadi kesalahan saat melakukan prediksi'
         }), 500
 
 
