@@ -5,64 +5,23 @@ import numpy as np
 import os
 import sys
 import traceback
-import json
-from pathlib import Path
 
 print("=" * 50, flush=True)
 print(" STARTING FLASK APPLICATION", flush=True)
 print("=" * 50, flush=True)
 
-# ==== TENTUKAN PATHS DENGAN BENAR ====
-BASE_DIR = Path(__file__).resolve().parent
-print(f"Base directory: {BASE_DIR}", flush=True)
-print(f"Current working directory: {os.getcwd()}", flush=True)
-
-# Cari file .pkl di berbagai lokasi
-possible_paths = [
-    BASE_DIR / 'model.pkl',
-    BASE_DIR.parent / 'model.pkl',
-    Path('model.pkl'),
-    Path('/home/cobh4463/aplikasi-rekomendasi-jurusan/model.pkl'),  # Sesuaikan dengan path hosting Anda
-]
-
-print(f"Files in current directory: {os.listdir('.')}", flush=True)
-if os.path.exists(BASE_DIR):
-    print(f"Files in BASE_DIR: {os.listdir(BASE_DIR)}", flush=True)
-
 # ==== CEK FILE .PKL ADA ATAU TIDAK ====
 print("Checking if model files exist...", flush=True)
+print(f"Current working directory: {os.getcwd()}", flush=True)
+print(f"Files in current directory: {os.listdir('.')}", flush=True)
+
 required_files = ['model.pkl', 'scaler.pkl', 'label_encoder.pkl']
-
-model_path = None
-scaler_path = None
-encoder_path = None
-
-# Cari model.pkl
-for path in possible_paths:
-    if path.exists():
-        model_path = str(path)
-        print(f"Found model.pkl at: {model_path}", flush=True)
-        break
-
-if not model_path:
-    print("WARNING: model.pkl not found in standard locations", flush=True)
-    model_path = 'model.pkl'
-
-for path in [BASE_DIR / 'scaler.pkl', Path('scaler.pkl'), BASE_DIR.parent / 'scaler.pkl']:
-    if path.exists():
-        scaler_path = str(path)
-        break
-if not scaler_path:
-    scaler_path = 'scaler.pkl'
-
-for path in [BASE_DIR / 'label_encoder.pkl', Path('label_encoder.pkl'), BASE_DIR.parent / 'label_encoder.pkl']:
-    if path.exists():
-        encoder_path = str(path)
-        break
-if not encoder_path:
-    encoder_path = 'label_encoder.pkl'
-
-print(f"Will attempt to load from: {model_path}, {scaler_path}, {encoder_path}", flush=True)
+for file in required_files:
+    if os.path.exists(file):
+        size = os.path.getsize(file) / (1024 * 1024)  # MB
+        print(f"{file} exists ({size:.2f} MB)", flush=True)
+    else:
+        print(f"{file} NOT FOUND!", flush=True)
 
 app = Flask(__name__)
 CORS(app)
@@ -73,40 +32,33 @@ scaler = None
 label_encoder = None
 
 try:
-    print(f"Attempting to load {model_path}...", flush=True)
-    model = joblib.load(model_path)
-    size = os.path.getsize(model_path) / (1024 * 1024)
-    print(f"model.pkl loaded successfully! ({size:.2f} MB)", flush=True)
+    print("Attempting to load model.pkl...", flush=True)
+    model = joblib.load('model.pkl')
+    print("model.pkl loaded successfully!", flush=True)
 except Exception as e:
     print(f"ERROR loading model.pkl: {str(e)}", flush=True)
     traceback.print_exc()
-    print("WARNING: Continuing without model (API will return errors)", flush=True)
-    model = None
+    sys.exit(1)
 
 try:
-    print(f"Attempting to load {scaler_path}...", flush=True)
-    scaler = joblib.load(scaler_path)
-    size = os.path.getsize(scaler_path) / (1024 * 1024)
-    print(f"scaler.pkl loaded successfully! ({size:.2f} MB)", flush=True)
+    print("Attempting to load scaler.pkl...", flush=True)
+    scaler = joblib.load('scaler.pkl')
+    print("scaler.pkl loaded successfully!", flush=True)
 except Exception as e:
     print(f"ERROR loading scaler.pkl: {str(e)}", flush=True)
     traceback.print_exc()
-    print("WARNING: Continuing without scaler (API will return errors)", flush=True)
-    scaler = None
+    sys.exit(1)
 
 try:
-    print(f"Attempting to load {encoder_path}...", flush=True)
-    label_encoder = joblib.load(encoder_path)
-    size = os.path.getsize(encoder_path) / (1024 * 1024)
-    print(f"label_encoder.pkl loaded successfully! ({size:.2f} MB)", flush=True)
+    print("Attempting to load label_encoder.pkl...", flush=True)
+    label_encoder = joblib.load('label_encoder.pkl')
+    print("label_encoder.pkl loaded successfully!", flush=True)
 except Exception as e:
     print(f"ERROR loading label_encoder.pkl: {str(e)}", flush=True)
     traceback.print_exc()
-    print("WARNING: Continuing without encoder (API will return errors)", flush=True)
-    label_encoder = None
+    sys.exit(1)
 
-models_ready = all([model, scaler, label_encoder])
-print(f"Models ready: {models_ready}", flush=True)
+print("All models loaded successfully!", flush=True)
 print("=" * 50, flush=True)
 
 # ==== Kolom Fitur ====
@@ -129,83 +81,43 @@ FEATURE_COLUMNS = [
 @app.route('/')
 def home():
     print("Home endpoint accessed", flush=True)
-    return jsonify({
-        'message': 'API Rekomendasi Jurusan - Flask is running!',
-        'models_loaded': models_ready,
-        'endpoints': {
-            'health': '/health',
-            'predict': '/predict'
-        }
-    }), 200
+    return "API Rekomendasi Jurusan - Flask is running!"
 
 @app.route('/health')
 def health():
     """Health check endpoint"""
     print("Health check accessed", flush=True)
     return jsonify({
-        'status': 'healthy' if models_ready else 'degraded',
+        'status': 'healthy',
         'message': 'API is running',
-        'models_loaded': models_ready
-    }), 200 if models_ready else 503
+        'models_loaded': True
+    }), 200
 
 @app.route('/predict', methods=['POST'])
 def predict():
     try:
         print("Predict endpoint accessed", flush=True)
-        
-        # Cek apakah models sudah loaded
-        if not models_ready:
-            print("ERROR: Models not loaded", flush=True)
-            return jsonify({
-                'error': 'Model tidak tersedia. Hubungi administrator.',
-                'jurusan': None,
-                'deskripsi': None
-            }), 503
-        
         data = request.get_json()
-        
-        if not data:
-            return jsonify({
-                'error': 'JSON data tidak diterima',
-                'jurusan': None,
-                'deskripsi': None
-            }), 400
 
         # Cek apakah fitur lengkap
         missing_features = [f for f in FEATURE_COLUMNS if f not in data]
         if missing_features:
             return jsonify({
-                'error': f'Input tidak lengkap. Missing: {missing_features}',
-                'jurusan': None,
-                'deskripsi': None
+                'error': f'Input tidak lengkap: {missing_features}'
             }), 400
 
-        # Validasi tipe data
-        try:
-            input_values = []
-            for f in FEATURE_COLUMNS:
-                val = float(data[f])
-                input_values.append(val)
-        except (ValueError, TypeError) as e:
-            return jsonify({
-                'error': f'Nilai harus berupa angka. Error: {str(e)}',
-                'jurusan': None,
-                'deskripsi': None
-            }), 400
-
+        # Ambil nilai input sesuai urutan kolom
+        input_values = [data[f] for f in FEATURE_COLUMNS]
         input_array = np.array(input_values).reshape(1, -1)
-        print(f"Input shape: {input_array.shape}", flush=True)
 
         # ==== Preprocessing: Scaling ====
         input_scaled = scaler.transform(input_array)
 
         # ==== Prediksi ====
         hasil_encoded = model.predict(input_scaled)
-        print(f"Prediction encoded: {hasil_encoded}", flush=True)
 
         # ==== Decode ke nama jurusan ====
         hasil_jurusan = label_encoder.inverse_transform(hasil_encoded)[0]
-        print(f"Prediction decoded: {hasil_jurusan}", flush=True)
 
         # ==== Deskripsi Map ====
         deskripsi_map = {
@@ -257,11 +169,11 @@ def predict():
 
         print(f"Prediction successful: {hasil_jurusan}", flush=True)
 
+        # ==== UBAH RETURN INI ====
         return jsonify({
             'jurusan': hasil_jurusan,
-            'deskripsi': deskripsi,
-            'status': 'success'
-        }), 200
+            'deskripsi': deskripsi
+        })
 
     except Exception as e:
         print(f"Error in predict: {str(e)}", flush=True)
@@ -269,19 +181,11 @@ def predict():
         return jsonify({
             'error': str(e),
             'jurusan': None,
-            'deskripsi': None,
-            'status': 'error'
+            'deskripsi': 'Terjadi kesalahan saat melakukan prediksi'
         }), 500
 
-@app.errorhandler(404)
-def not_found(error):
-    return jsonify({'error': 'Endpoint not found'}), 404
-
-@app.errorhandler(500)
-def internal_error(error):
-    return jsonify({'error': 'Internal server error', 'message': str(error)}), 500
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     print(f"Starting Flask on port {port}", flush=True)
-    app.run(host="0.0.0.0", port=port, debug=False)
+    app.run(host="0.0.0.0", port=port)
